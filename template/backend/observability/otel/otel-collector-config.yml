@@ -1,0 +1,32 @@
+receivers:
+  otlp:
+    protocols:
+      grpc:
+        endpoint: 0.0.0.0:4317
+      http:
+        endpoint: 0.0.0.0:4318
+
+processors:
+  transform/loki_trace_id:
+    log_statements:
+      - context: log
+        statements:
+          - set(resource.attributes["trace_id"], attributes["TraceId"]) where attributes["TraceId"] != nil
+          - set(resource.attributes["span_id"], attributes["SpanId"]) where attributes["SpanId"] != nil
+  batch:
+
+exporters:
+  otlphttp/loki:
+    endpoint: http://loki:3100/otlp
+    tls:
+      insecure: true
+
+  debug:
+    verbosity: basic
+
+service:
+  pipelines:
+    logs:
+      receivers: [otlp]
+      processors: [transform/loki_trace_id, batch]
+      exporters: [otlphttp/loki, debug]
