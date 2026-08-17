@@ -9,6 +9,7 @@ using Ambev.DeveloperEvaluation.WebApi.Middleware;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
 using Serilog;
+using System.Diagnostics;
 
 namespace Ambev.DeveloperEvaluation.WebApi;
 
@@ -18,6 +19,9 @@ public class Program
     {
         try
         {
+            Activity.DefaultIdFormat = ActivityIdFormat.W3C;
+            Activity.ForceDefaultIdFormat = true;
+
             Log.Information("Starting web application");
 
             WebApplicationBuilder builder = WebApplication.CreateBuilder(args);
@@ -53,7 +57,9 @@ public class Program
             builder.Services.AddTransient(typeof(IPipelineBehavior<,>), typeof(ValidationBehavior<,>));
 
             var app = builder.Build();
-            app.UseMiddleware<ValidationExceptionMiddleware>();
+            app.UseMiddleware<TraceIdMiddleware>();
+            app.UseSerilogRequestLogging();
+            app.UseMiddleware<ExceptionHandlingMiddleware>();
 
             if (app.Environment.IsDevelopment())
             {

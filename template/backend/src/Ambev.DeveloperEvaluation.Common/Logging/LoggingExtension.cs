@@ -7,8 +7,8 @@ using Serilog.Events;
 using Serilog.Exceptions;
 using Serilog.Exceptions.Core;
 using Serilog.Exceptions.EntityFrameworkCore.Destructurers;
+using Serilog.Sinks.OpenTelemetry;
 using Serilog.Sinks.SystemConsole.Themes;
-using Serilog.Templates;
 using System.Diagnostics;
 
 namespace Ambev.DeveloperEvaluation.Common.Logging;
@@ -80,8 +80,20 @@ public static class LoggingExtension
                         "logs/log-.txt",
                         rollingInterval: RollingInterval.Day,
                         outputTemplate: "{Timestamp:yyyy-MM-dd HH:mm:ss.fff zzz} [{Level:u3}] {SourceContext} {Message:lj}{NewLine}{Exception}"
-                    );
+                    )
+;
             }
+
+            loggerConfiguration.WriteTo.OpenTelemetry(options =>
+            {
+                options.Endpoint = builder.Configuration["OpenTelemetry:LogsEndpoint"] ?? "http://localhost:4318";
+                options.Protocol = OtlpProtocol.HttpProtobuf;
+                options.ResourceAttributes = new Dictionary<string, object>
+                {
+                    ["service.name"] = builder.Configuration["OpenTelemetry:ServiceName"] ?? "ambev-sales-api",
+                    ["deployment.environment"] = builder.Environment.EnvironmentName
+                };
+            });
         });
 
         builder.Services.AddLogging();
