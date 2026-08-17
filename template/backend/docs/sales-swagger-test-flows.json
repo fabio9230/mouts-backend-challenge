@@ -1,0 +1,254 @@
+{
+  "description": "Fluxos de teste manual da API Sales para execução pelo Swagger.",
+  "baseUrl": "/api/Sales",
+  "notes": [
+    "Substitua {saleId} e {itemId} pelos IDs retornados pela API.",
+    "O fluxo 04 deve ser executado após o fluxo 01.",
+    "No PUT, id preenchido representa item existente; id null representa item novo."
+  ],
+  "flows": [
+    {
+      "name": "01 - Criar venda sem desconto",
+      "method": "POST",
+      "path": "/api/Sales",
+      "headers": {
+        "Content-Type": "application/json",
+        "Idempotency-Key": "swagger-create-001"
+      },
+      "body": {
+        "saleNumber": "SWAGGER-001",
+        "date": "2026-08-14T17:00:00Z",
+        "customerId": "11111111-1111-1111-1111-111111111111",
+        "branchId": "22222222-2222-2222-2222-222222222222",
+        "items": [
+          {
+            "productId": "33333333-3333-3333-3333-333333333333",
+            "productName": "Mouse",
+            "quantity": 2,
+            "unitPrice": 100.0
+          }
+        ]
+      },
+      "expected": "201 Created; desconto 0%; total 200.00."
+    },
+    {
+      "name": "02 - Desconto de 10% com 4 unidades",
+      "method": "POST",
+      "path": "/api/Sales",
+      "headers": {
+        "Content-Type": "application/json",
+        "Idempotency-Key": "swagger-discount-004"
+      },
+      "body": {
+        "saleNumber": "SWAGGER-DISCOUNT-004",
+        "date": "2026-08-14T17:00:00Z",
+        "customerId": "11111111-1111-1111-1111-111111111111",
+        "branchId": "22222222-2222-2222-2222-222222222222",
+        "items": [
+          {
+            "productId": "44444444-4444-4444-4444-444444444444",
+            "productName": "Keyboard",
+            "quantity": 4,
+            "unitPrice": 100.0
+          }
+        ]
+      },
+      "expected": "201 Created; desconto 10%; desconto 40.00; total 360.00."
+    },
+    {
+      "name": "03 - Desconto de 20% com 10 unidades",
+      "method": "POST",
+      "path": "/api/Sales",
+      "headers": {
+        "Content-Type": "application/json",
+        "Idempotency-Key": "swagger-discount-010"
+      },
+      "body": {
+        "saleNumber": "SWAGGER-DISCOUNT-010",
+        "date": "2026-08-14T17:00:00Z",
+        "customerId": "11111111-1111-1111-1111-111111111111",
+        "branchId": "22222222-2222-2222-2222-222222222222",
+        "items": [
+          {
+            "productId": "55555555-5555-5555-5555-555555555555",
+            "productName": "Monitor",
+            "quantity": 10,
+            "unitPrice": 100.0
+          }
+        ]
+      },
+      "expected": "201 Created; desconto 20%; desconto 200.00; total 800.00."
+    },
+    {
+      "name": "04 - Replay de idempotência",
+      "method": "POST",
+      "path": "/api/Sales",
+      "headers": {
+        "Content-Type": "application/json",
+        "Idempotency-Key": "swagger-create-001"
+      },
+      "body": {
+        "saleNumber": "SWAGGER-001",
+        "date": "2026-08-14T17:00:00Z",
+        "customerId": "11111111-1111-1111-1111-111111111111",
+        "branchId": "22222222-2222-2222-2222-222222222222",
+        "items": [
+          {
+            "productId": "33333333-3333-3333-3333-333333333333",
+            "productName": "Mouse",
+            "quantity": 2,
+            "unitPrice": 100.0
+          }
+        ]
+      },
+      "expected": "200 OK; mesma venda; header X-Idempotent-Replay: true."
+    },
+    {
+      "name": "05 - Listar vendas",
+      "method": "GET",
+      "path": "/api/Sales",
+      "headers": {},
+      "body": null,
+      "expected": "200 OK; lista de vendas."
+    },
+    {
+      "name": "06 - Buscar venda",
+      "method": "GET",
+      "path": "/api/Sales/{saleId}",
+      "headers": {},
+      "body": null,
+      "expected": "200 OK.",
+      "replace": {
+        "{saleId}": "ID retornado pelo fluxo 01."
+      }
+    },
+    {
+      "name": "07 - Atualizar item existente",
+      "method": "PUT",
+      "path": "/api/Sales/{saleId}",
+      "headers": {
+        "Content-Type": "application/json"
+      },
+      "body": {
+        "saleNumber": "SWAGGER-001",
+        "date": "2026-08-14T17:20:00Z",
+        "customerId": "11111111-1111-1111-1111-111111111111",
+        "branchId": "22222222-2222-2222-2222-222222222222",
+        "items": [
+          {
+            "id": "{itemId}",
+            "productId": "33333333-3333-3333-3333-333333333333",
+            "productName": "Mouse Updated",
+            "quantity": 5,
+            "unitPrice": 100.0,
+            "isCancelled": false
+          }
+        ]
+      },
+      "expected": "200 OK; item atualizado; 10%; total 450.00.",
+      "replace": {
+        "{saleId}": "ID da venda.",
+        "{itemId}": "ID do item retornado pelo POST."
+      }
+    },
+    {
+      "name": "08 - Atualizar venda com item novo",
+      "method": "PUT",
+      "path": "/api/Sales/{saleId}",
+      "headers": {
+        "Content-Type": "application/json"
+      },
+      "body": {
+        "saleNumber": "SWAGGER-001",
+        "date": "2026-08-14T17:25:00Z",
+        "customerId": "11111111-1111-1111-1111-111111111111",
+        "branchId": "22222222-2222-2222-2222-222222222222",
+        "items": [
+          {
+            "id": null,
+            "productId": "66666666-6666-6666-6666-666666666666",
+            "productName": "Headset",
+            "quantity": 2,
+            "unitPrice": 150.0,
+            "isCancelled": false
+          }
+        ]
+      },
+      "expected": "200 OK; item novo persistido com novo ID e 0% de desconto.",
+      "replace": {
+        "{saleId}": "ID da venda."
+      }
+    },
+    {
+      "name": "09 - Atualizar existente + adicionar novo",
+      "method": "PUT",
+      "path": "/api/Sales/{saleId}",
+      "headers": {
+        "Content-Type": "application/json"
+      },
+      "body": {
+        "saleNumber": "SWAGGER-001",
+        "date": "2026-08-14T17:30:00Z",
+        "customerId": "11111111-1111-1111-1111-111111111111",
+        "branchId": "22222222-2222-2222-2222-222222222222",
+        "items": [
+          {
+            "id": "{itemId}",
+            "productId": "33333333-3333-3333-3333-333333333333",
+            "productName": "Mouse Updated",
+            "quantity": 5,
+            "unitPrice": 100.0,
+            "isCancelled": false
+          },
+          {
+            "id": null,
+            "productId": "66666666-6666-6666-6666-666666666666",
+            "productName": "Headset",
+            "quantity": 2,
+            "unitPrice": 150.0,
+            "isCancelled": false
+          }
+        ]
+      },
+      "expected": "200 OK; UPDATE do existente + INSERT do novo.",
+      "replace": {
+        "{saleId}": "ID da venda.",
+        "{itemId}": "ID do item existente."
+      }
+    },
+    {
+      "name": "10 - Cancelar item",
+      "method": "POST",
+      "path": "/api/Sales/{saleId}/items/{itemId}/cancel",
+      "headers": {},
+      "body": null,
+      "expected": "200 OK; item cancelado e total recalculado.",
+      "replace": {
+        "{saleId}": "ID da venda.",
+        "{itemId}": "ID do item."
+      }
+    },
+    {
+      "name": "11 - Cancelar venda",
+      "method": "POST",
+      "path": "/api/Sales/{saleId}/cancel",
+      "headers": {},
+      "body": null,
+      "expected": "200 OK; venda cancelada.",
+      "replace": {
+        "{saleId}": "ID da venda."
+      }
+    },
+    {
+      "name": "12 - Excluir venda",
+      "method": "DELETE",
+      "path": "/api/Sales/{saleId}",
+      "headers": {},
+      "body": null,
+      "expected": "204 No Content.",
+      "replace": {
+        "{saleId}": "ID da venda."
+      }
+    }
+  ]
+}
