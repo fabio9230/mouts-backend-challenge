@@ -3,6 +3,7 @@ version: '3.8'
 services:
   ambev.developerevaluation.webapi:
     container_name: ambev_developer_evaluation_webapi
+    profiles: [ app ]
     image: ${DOCKER_REGISTRY-}ambevdeveloperevaluationwebapi
     build:
       context: .
@@ -11,15 +12,18 @@ services:
       - ASPNETCORE_ENVIRONMENT=Development
       - ASPNETCORE_HTTP_PORTS=8080
       - ASPNETCORE_HTTPS_PORTS=8081
+      - OpenTelemetry__LogsEndpoint=http://otel-collector:4318
+      - OpenTelemetry__ServiceName=ambev-sales-api
     ports:
-      - "8080"
-      - "8081"
+      - "8080:8080"
+      - "8081:8081"
     volumes:
       - ${APPDATA}/Microsoft/UserSecrets:/home/app/.microsoft/usersecrets:ro
       - ${APPDATA}/ASP.NET/Https:/home/app/.aspnet/https:ro
 
   ambev.developerevaluation.database:
     container_name: ambev_developer_evaluation_database
+    profiles: [ essentials, debug, app ]
     image: postgres:13
 
     environment:
@@ -27,11 +31,12 @@ services:
       POSTGRES_USER: developer
       POSTGRES_PASSWORD: ev@luAt10n
     ports:
-      - "5432"
+      - "5432:5432"
     restart: unless-stopped
 
   ambev.developerevaluation.nosql:
-    container_name: ambev_developer_evaluation_nosql 
+    container_name: ambev_developer_evaluation_nosql
+    profiles: [ debug, app ]
     image: mongo:8.0    
     environment:
         MONGO_INITDB_ROOT_USERNAME: developer
@@ -40,7 +45,8 @@ services:
       - "27017"
 
   ambev.developerevaluation.cache:
-    container_name: ambev_developer_evaluation_cache 
+    container_name: ambev_developer_evaluation_cache
+    profiles: [ debug, app ]
     image: redis:7.4.1-alpine     
     command: redis-server --requirepass ev@luAt10n
     environment:
@@ -48,3 +54,47 @@ services:
        MONGO_INITDB_ROOT_PASSWORD: ev@luAt10n
     ports:
        - "6379"
+
+  otel-collector:
+    container_name: ambev_developer_evaluation_otel_collector
+    profiles: [ essentials, debug, app ]
+    image: otel/opentelemetry-collector-contrib:0.133.0
+    command: ["--config=/etc/otelcol-contrib/config.yaml"]
+    volumes:
+      - ./observability/otel/otel-collector-config.yml:/etc/otelcol-contrib/config.yaml:ro
+    ports:
+      - "4317:4317"
+      - "4318:4318"
+    depends_on:
+      - loki
+
+  loki:
+    container_name: ambev_developer_evaluation_loki
+    profiles: [ essentials, debug, app ]
+    image: grafana/loki:3.7.0
+    command: -config.file=/etc/loki/loki-config.yml
+    volumes:
+      - ./observability/loki/loki-config.yml:/etc/loki/loki-config.yml:ro
+      - loki-data:/loki
+    ports:
+      - "3100:3100"
+
+  grafana:
+    container_name: ambev_developer_evaluation_grafana
+    profiles: [ essentials, debug, app ]
+    image: grafana/grafana:12.1.0
+    environment:
+      - GF_AUTH_ANONYMOUS_ENABLED=true
+      - GF_AUTH_ANONYMOUS_ORG_ROLE=Admin
+      - GF_USERS_ALLOW_SIGN_UP=false
+    volumes:
+      - grafana-data:/var/lib/grafana
+      - ./observability/grafana/provisioning:/etc/grafana/provisioning:ro
+    ports:
+      - "3000:3000"
+    depends_on:
+      - loki
+
+volumes:
+  loki-data:
+  grafana-data:
